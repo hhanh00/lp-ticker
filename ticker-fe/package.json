@@ -1,0 +1,17 @@
+{
+  "name": "ticker-fe",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@nuxtjs/axios": "^5.12.2",
+    "bootstrap": "^4.5.3",
+    "bootstrap-vue": "^2.18.1",
+    "luxon": "^1.25.0",
+    "nuxt": "^2.14.7"
+  },
+  "devDependencies": {
+    "pug": "^3.0.0",
+    "pug-plain-loader": "^1.0.0"
+  }
+}
