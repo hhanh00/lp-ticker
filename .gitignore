@@ -2,3 +2,7 @@ node_modules/
 dist/
 .nuxt/
 yarn-error.log
+*.pyc
+venv/
+db.sqlite3
+migrations/

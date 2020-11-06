@@ -7,9 +7,9 @@ Let's start with a tree structure:
 ```
 .
 ├── README.md
-├── ticker-be
-├── ticker-fe
-└── ticker-svc
+├── ticker_be
+├── ticker_fe
+└── ticker_svc
 ```
 
 # FE
@@ -177,3 +177,121 @@ Generate static website
 
 `yarn run nuxt generate`
 
+# BE
+
+In `ticker`, create python venv
+
+```sh
+$ virtualenv venv
+$ source venv/bin/activate
+$ pip install django djangorestframework
+$ django-admin startproject ticker_be
+```
+
+In `ticker_be`
+```
+./manage.py startapp api
+```
+
+In `ticker_be/settings.py`, add `api` in `INSTALLED_APPS`,
+Then migrate the database
+```
+$ ./manage.py migrate
+```
+
+Create a `urls.py` in `api`,
+
+```python
+from django.urls import path
+from . import views
+
+urlpatterns = [
+  path('data', views.get_data)
+]
+```
+
+In `views.py`, start with
+
+```python
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+@api_view(['GET'])
+def get_data(request):
+  return Response()
+```
+
+In `urls.py` of the main folder
+```
+from django.urls import path, include # <-- ADD THIS
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/', include('api.urls')), # <--- ADD THIS
+]
+```
+
+`curl http://localhost:8000/api/data`
+
+In `models.py`
+```python
+class PriceItem(models.Model):
+  time = models.DateTimeField(unique=True)
+  value = models.DecimalField(max_digits=12, decimal_places=4)
+```
+
+Add a `serializers.py` file
+```python
+from rest_framework import serializers
+from .models import PriceItem
+
+class TimestampField(serializers.Field):
+  def to_representation(self, value):
+    return value.timestamp()
+
+class PriceItemSerializer(serializers.ModelSerializer):
+  time = TimestampField()
+  class Meta:
+    model = PriceItem
+    fields = ['time', 'value']
+```
+
+Change `views.py`
+```python
+from django.utils import timezone
+from datetime import datetime, timedelta
+from rest_framework import status
+from .models import PriceItem
+from .serializers import PriceItemSerializer
+
+@api_view(['GET', 'POST'])
+def get_data(request):
+  if request.method == 'POST':
+    data = request.data
+    try:
+      PriceItem.objects.create(time=data['time'], value=data['value'])
+    except IntegrityError:
+      pass
+    return Response(status=status.HTTP_201_CREATED)
+  else:
+    start_date = timezone.make_aware(datetime.strptime(request.GET['start_date'], '%Y-%m-%d'))
+    end_date = timezone.make_aware(datetime.strptime(request.GET['end_date'], '%Y-%m-%d')) + timedelta(days=1)
+    items = PriceItem.objects.filter(time__gte=start_date, time__lte=end_date)
+    ser = PriceItemSerializer(items, many=True)
+    return Response(ser.data)
+```
+
+Make migrations
+```
+./manage.py makemigrations
+./manage.py migrate
+```
+
+`curl 'http://localhost:8000/api/data?start_date=2020-11-04&end_date=2020-12-01'`
+
+```sh
+curl --location --request POST 'http://localhost:8000/api/data' \
+--header 'Content-Type: application/json' \
+--data-raw '{"time": "2020-11-04","value": 100}'
+```
